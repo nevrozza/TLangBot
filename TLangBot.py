@@ -8,47 +8,65 @@ from threading import Thread
 
 class idk:
     
-
+    
     def __init__(self, message):
         self.__message = message
         self.__id = message.chat.id
-        self.__db = sqlite3.connect(r"D:\github\TLangBot\tlangbot.sqlite3", check_same_thread=False)
+        self.__db = sqlite3.connect(r"tlangbot.sqlite3", check_same_thread=False)
         self.__sql = self.__db.cursor()
+        self.__name = self.check_db('name')
+        self.__bot_lang = self.check_db('bot_lang')
+        self.__native_lang = self.check_db('native_lang')
+        self.__first_lang = self.check_db('first_lang')
+        self.__second_lang = self.check_db('second_lang')
+        
+
+    def update(self):
+        self.__name = self.check_db('name')
+        self.__bot_lang = self.check_db('bot_lang')
+        self.__native_lang = self.check_db('native_lang')
+        self.__first_lang = self.check_db('first_lang')
+        self.__second_lang = self.check_db('second_lang')
+        
+
 
     def new_user(self):
+        
         self.__sql.execute("INSERT INTO usercfg VALUES(?, 0, 0, 0, 0, 0, 0)", (self.__id,))
         self.__db.commit()
         bot.send_message('-1001763397724', f'new user: {self.__id}')
         print(f'new user: {self.__id}')
-        
+        self.update()
 
     def anti_start(self):
+        
         try:
             self.__sql.execute(f"DELETE FROM usercfg WHERE id = '{self.__id}'")
             self.__db.commit()
         except: print('36 NONE')
-
-    def anti_native(self, bot_lang):
-        self.del_last_msg()
-        native_lang = self.check_db('native_lang')
+        self.update()
+    def anti_native(self):
         
-        if bot_lang == 'ru':
-            if native_lang == 0:
+        self.del_last_msg()
+        
+        
+        if self.__bot_lang == 'ru':
+            if self.__native_lang == 0:
                 self.message('Выберите язык изучения', kb_languages('first'))
             else:
                 self.message('Ваш Родной язык изменён')
-        elif bot_lang == 'en':
-            if native_lang == 0:
+        elif self.__bot_lang == 'en':
+            if self.__native_lang == 0:
                 self.message('Choose language of learn', kb_languages('first'))
             else:
                 self.message('Your native language has been changed')
         
     def yes_second(self):
-        bot_lang = self.check_db('bot_lang')
+        
         self.del_last_msg()
-        if bot_lang == 'ru':
+        if self.__bot_lang == 'ru':
             self.message('Выберите второй язык изучения', kb_languages('second'))
-        elif bot_lang == 'en':
+        elif self.__bot_lang == 'en':
             self.message('Choose second language of learn', kb_languages('second'))
             
 
@@ -66,28 +84,38 @@ class idk:
                 bot.delete_message(self.__id, sent.id)
             except: print('63 NONE')
 
+    
+
     def check_db(self, target):
+        
         try:    
             self.__sql.execute(f"SELECT {target} FROM usercfg WHERE id = '{self.__id}'")
-            return self.__sql.fetchone()[0]
+            row = self.__sql.fetchone()[0]
+            print(target, row)
+            return row
         except: print('30 NONE')
+    
     
 
     def save_name(self, sent):
+       
         self.__sql.execute(f"UPDATE usercfg SET name = '{sent.text}' WHERE id = '{self.__id}'")
         self.__db.commit() 
+        self.update()
         self.del_last_msg(sent)
-        name = self.check_db('name')
-        lang = self.check_db('bot_lang')
         kb = kb_languages('native')
-        if lang == 'ru':
-            self.message(f"{name}, какой твой родной язык?", kb)
-        elif lang == 'en':
-            self.message(f"{name}, what is your native language?", kb)    
+        
+        if self.__bot_lang == 'ru':
+            self.message(f"{self.__name}, какой твой родной язык?", kb)
+        elif self.__bot_lang == 'en':
+            self.message(f"{self.__name}, what is your native language?", kb)    
 
     def callback_receiver(self, cb):
-        bot_lang = self.check_db('bot_lang')
         
+        bot_lang = self.__bot_lang
+        native_lang = self.__native_lang
+        first_lang = self.__first_lang
+        second_lang = self.__second_lang
         if cb == 'ru_bot':
             self.__sql.execute(f"UPDATE usercfg SET bot_lang = 'ru' WHERE id = '{self.__id}'")
             self.__db.commit()
@@ -116,15 +144,12 @@ class idk:
                 self.new_user()
             else:
                 
-                self.anti_native(bot_lang)
+                self.anti_native()
                 self.__sql.execute(f"UPDATE usercfg SET native_lang = '{cb[-2:]}' WHERE id = '{self.__id}'")
                 self.__db.commit()
                 
 
         elif cb[0:5] == 'first':
-            second_lang = self.check_db('second_lang')
-            bot_lang = self.check_db('bot_lang')
-            native_lang = self.check_db('native_lang')
             if bot_lang == 0:
                 cb = 'eng_bot'
                 self.new_user()
@@ -150,9 +175,6 @@ class idk:
                 
                 
         elif cb[0:6] == 'second':
-            first_lang = self.check_db('first_lang')
-            bot_lang = self.check_db('bot_lang')
-            native_lang = self.check_db('native_lang')
             if bot_lang == 0:
                 cb = 'eng_bot'
                 self.new_user()
@@ -169,16 +191,13 @@ class idk:
             else:
                 self.__sql.execute(f"UPDATE usercfg SET second_lang = '{cb[-2:]}' WHERE id = '{self.__id}'")
                 self.__db.commit()
-                bot_lang = self.check_db('bot_lang')
-                name = self.check_db('name')
-                native_lang = self.check_db('native_lang')
-                first_lang = self.check_db('first_lang')
-                second_lang = self.check_db('second_lang')
+                self.update()
+                second_lang = self.__second_lang
                 self.del_last_msg()
                 if bot_lang == 'ru':
-                    self.message(f'Вот ваши настройки бота:\nВаше имя: {name}\nРодной язык: {native_lang}\nПервый язык: {first_lang}\nВторой язык: {second_lang}', kb_clear_data(self.__message))
+                    self.message(f'Вот ваши настройки бота:\nВаше имя: {self.__name}\nРодной язык: {native_lang}\nПервый язык: {first_lang}\nВторой язык: {second_lang}', kb_clear_data(self.__message))
                 elif bot_lang == 'en':
-                    self.message(f'This is yours bot settings:\nYour name: {name}\nNative language: {native_lang}\nFirst language: {first_lang}\nSecond language: {second_lang}', kb_clear_data(self.__message))
+                    self.message(f'This is yours bot settings:\nYour name: {self.__name}\nNative language: {native_lang}\nFirst language: {first_lang}\nSecond language: {second_lang}', kb_clear_data(self.__message))
                 
                 
                 
@@ -195,7 +214,7 @@ class idk:
         elif cb == 'no_second':
             cb = 'second_00'
             self.callback_receiver(cb)
-
+        self.update()
     def message(self, text='чел забыл написать сообщение', kb = None):   
          
         lmsg = bot.send_message(self.__id, text, reply_markup=kb)
@@ -203,8 +222,10 @@ class idk:
         
         return lmsg   
 
-    def sam_bot(self, __message):        
-        pass
+    def sam_bot(self, __id):
+        
+        
+        return
 
 def kb_bot_language():
     kb = tb.types.InlineKeyboardMarkup(row_width=1)
