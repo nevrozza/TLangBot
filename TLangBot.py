@@ -6,7 +6,8 @@ import schedule
 from threading import Thread
 # from random import sample
 
-
+def sam_bot(message):
+    
 
         
 
@@ -20,7 +21,7 @@ class idk:
         self.__sql = self.__db.cursor()
 
     def new_user(self):
-        self.__sql.execute("INSERT INTO usercfg VALUES(?, 0, 0, 0, 0, 0, 0, 0, 0)", (self.__id,))
+        self.__sql.execute("INSERT INTO usercfg VALUES(?, 0, 0, 0, 0, 0, 0)", (self.__id,))
         self.__db.commit()
         bot.send_message('-1001763397724', f'new user: {self.__id}')
         print(f'new user: {self.__id}')
@@ -38,14 +39,23 @@ class idk:
         
         if bot_lang == 'ru':
             if native_lang == 0:
-                self.message('Выберите язык изучения', kb_first_language())
+                self.message('Выберите язык изучения', kb_languages('first'))
             else:
                 self.message('Ваш Родной язык изменён')
-        elif bot_lang == 'eng':
+        elif bot_lang == 'en':
             if native_lang == 0:
-                self.message('Choose language of learn', kb_first_language())
+                self.message('Choose language of learn', kb_languages('first'))
             else:
                 self.message('Your native language has been changed')
+        
+    def yes_second(self):
+        bot_lang = self.check_db('bot_lang')
+        self.del_last_msg()
+        if bot_lang == 'ru':
+            self.message('Выберите второй язык изучения', kb_languages('second'))
+        elif bot_lang == 'en':
+            self.message('Choose second language of learn', kb_languages('second'))
+            
 
     def del_last_msg(self, sent = None):
         try:
@@ -74,10 +84,10 @@ class idk:
         self.del_last_msg(sent)
         name = self.check_db('name')
         lang = self.check_db('bot_lang')
-        kb = kb_native_language()
+        kb = kb_languages('native')
         if lang == 'ru':
             self.message(f"{name}, какой твой родной язык?", kb)
-        elif lang == 'eng':
+        elif lang == 'en':
             self.message(f"{name}, what is your native language?", kb)    
 
     def callback_receiver(self, cb):
@@ -90,18 +100,18 @@ class idk:
                 self.del_last_msg()
                 sent = self.message('Как Вас зовут?')
                 bot.register_next_step_handler(sent, self.save_name)
-            elif bot_lang == 'ru' or bot_lang == 'eng':
+            elif bot_lang == 'ru' or bot_lang == 'en':
                 self.del_last_msg()
                 self.message('Язык был успешно изменён')
 
         elif cb == 'eng_bot':
-            self.__sql.execute(f"UPDATE usercfg SET bot_lang = 'eng' WHERE id = '{self.__id}'")
+            self.__sql.execute(f"UPDATE usercfg SET bot_lang = 'en' WHERE id = '{self.__id}'")
             self.__db.commit()
             if bot_lang == 0:
                 self.del_last_msg()
-                self.message("What's your name?")
+                sent = self.message("What's your name?")
                 bot.register_next_step_handler(sent, self.save_name)
-            elif bot_lang == 'ru' or bot_lang == 'eng':
+            elif bot_lang == 'ru' or bot_lang == 'en':
                 self.del_last_msg()
                 self.message('Language has been changed')
         
@@ -119,42 +129,62 @@ class idk:
         elif cb[0:5] == 'first':
             second_lang = self.check_db('second_lang')
             bot_lang = self.check_db('bot_lang')
+            native_lang = self.check_db('native_lang')
             if bot_lang == 0:
                 cb = 'eng_bot'
                 self.new_user()
+            elif cb[-2:] == native_lang:
+                if bot_lang == 'ru':
+                    self.message('Вы не можете выбрать одинаковые языки')
+                elif bot_lang == 'en':
+                    self.message('рпарпаВы не можете выбрать одинаковые языки')
+
             elif cb[-2:] == second_lang:
                 if bot_lang == 'ru':
                     self.message('Вы не можете изучать 2 одинаковых языка')
-                elif bot_lang == 'eng':
+                elif bot_lang == 'en':
                     self.message('You cannot choice 2 odinakovix yazika')
             else:
                 self.del_last_msg()
                 if bot_lang == 'ru':
-                    self.message('Хотите ли Вы выбрать ещё один язык?')
-                elif bot_lang == 'eng':
-                    self.message('Do you want to choose second language?')
+                    self.message('Хотите ли Вы выбрать ещё один язык?', kb_second_choose(self.__message))
+                elif bot_lang == 'en':
+                    self.message('Do you want to choose second language?', kb_second_choose(self.__message))
                 self.__sql.execute(f"UPDATE usercfg SET first_lang = '{cb[-2:]}' WHERE id = '{self.__id}'")
                 self.__db.commit()
                 
                 
         elif cb[0:6] == 'second':
             first_lang = self.check_db('first_lang')
+            bot_lang = self.check_db('bot_lang')
+            native_lang = self.check_db('native_lang')
             if bot_lang == 0:
                 cb = 'eng_bot'
                 self.new_user()
+            elif cb[-2:] == native_lang:
+                if bot_lang == 'ru':
+                    self.message('Вы не можете выбрать одинаковые языки')
+                elif bot_lang == 'en':
+                    self.message('рпарпаВы не можете выбрать одинаковые языки')
             elif cb[-2:] == first_lang:
                 if bot_lang == 'ru':
                     self.message('Вы не можете изучать 2 одинаковых языка')
-                elif bot_lang == 'eng':
+                elif bot_lang == 'en':
                     self.message('You cannot choice 2 odinakovix yazika')
             else:
-                self.del_last_msg()
-                if bot_lang == 'ru':
-                    self.message('Во сколько Вы хотите получать по мск')
-                elif bot_lang == 'eng':
-                    self.message('ENG Во сколько Вы хотите получать по мск ')
                 self.__sql.execute(f"UPDATE usercfg SET second_lang = '{cb[-2:]}' WHERE id = '{self.__id}'")
                 self.__db.commit()
+                bot_lang = self.check_db('bot_lang')
+                name = self.check_db('name')
+                native_lang = self.check_db('native_lang')
+                first_lang = self.check_db('first_lang')
+                second_lang = self.check_db('second_lang')
+                self.del_last_msg()
+                if bot_lang == 'ru':
+                    self.message(f'Вот ваши настройки бота:\nВаше имя: {name}\nРодной язык: {native_lang}\nПервый язык: {first_lang}\nВторой язык: {second_lang}', kb_clear_data(self.__message))
+                elif bot_lang == 'en':
+                    self.message(f'This is yours bot settings:\nYour name: {name}\nNative language: {native_lang}\nFirst language: {first_lang}\nSecond language: {second_lang}', kb_clear_data(self.__message))
+                
                 
                 
         
@@ -165,6 +195,11 @@ class idk:
             start_command(self.__message)
         elif cb == 'comeback':
             pass
+        elif cb == 'yes_second':
+            self.yes_second()
+        elif cb == 'no_second':
+            cb = 'second_00'
+            self.callback_receiver(cb)
 
     def message(self, text='чел забыл написать сообщение', kb = None):   
          
@@ -174,96 +209,65 @@ class idk:
         return lmsg            
 
 def kb_bot_language():
-        kb = tb.types.InlineKeyboardMarkup(row_width=1)
-        btn1 = tb.types.InlineKeyboardButton('Ru', callback_data = 'ru_bot')
-        btn2 = tb.types.InlineKeyboardButton('Eng', callback_data = 'eng_bot')
-        kb.add(btn1,btn2)
-        return kb
+    kb = tb.types.InlineKeyboardMarkup(row_width=1)
+    btn1 = tb.types.InlineKeyboardButton('Ru', callback_data = 'ru_bot')
+    btn2 = tb.types.InlineKeyboardButton('Eng', callback_data = 'eng_bot')
+    kb.add(btn1,btn2)
+    return kb
 
 def kb_clear_data(message):
-        userid = idk(message)
-        bot_lang = userid.check_db('bot_lang')
-        kb = tb.types.InlineKeyboardMarkup(row_width=1)
-        if bot_lang == 0 or bot_lang == 'eng':
-                btn1 = tb.types.InlineKeyboardButton('Reset bot', callback_data = 'clear_data')
-                btn2 = tb.types.InlineKeyboardButton('Ne menyat nastroiki', callback_data = 'comeback')
-        elif bot_lang == 'ru':
-                btn1 = tb.types.InlineKeyboardButton('Настроить бота заново', callback_data = 'clear_data')
-                btn2 = tb.types.InlineKeyboardButton('Не менять настройки', callback_data = 'comeback')
+    userid = idk(message)
+    bot_lang = userid.check_db('bot_lang')
+    kb = tb.types.InlineKeyboardMarkup(row_width=1)
+    if bot_lang == 0 or bot_lang == 'en':
+            btn2 = tb.types.InlineKeyboardButton('Reset bot', callback_data = 'clear_data')
+            btn1 = tb.types.InlineKeyboardButton('Ne menyat nastroiki', callback_data = 'comeback')
+    elif bot_lang == 'ru':
+            btn2 = tb.types.InlineKeyboardButton('Настроить бота заново', callback_data = 'clear_data')
+            btn1 = tb.types.InlineKeyboardButton('Не менять настройки', callback_data = 'comeback')
 
-        kb.add(btn1,btn2)
-        return kb
+    kb.add(btn1,btn2)
+    return kb
 
-def kb_native_language():
+def kb_second_choose(message):
+    userid = idk(message)
+    bot_lang = userid.check_db('bot_lang')
+    kb = tb.types.InlineKeyboardMarkup(row_width=1)
+    if bot_lang == 0 or bot_lang == 'en':
+        btn1 = tb.types.InlineKeyboardButton('Yes', callback_data = 'yes_second')
+        btn2 = tb.types.InlineKeyboardButton('No', callback_data = 'no_second')
+    elif bot_lang == 'ru':
+        btn1 = tb.types.InlineKeyboardButton('Да', callback_data = 'yes_second')
+        btn2 = tb.types.InlineKeyboardButton('Нет', callback_data = 'no_second')
+    kb.add(btn1,btn2)
+    return kb
+
+def kb_languages(choice):
     
     kb = tb.types.InlineKeyboardMarkup(row_width=3)
-    btn1 = tb.types.InlineKeyboardButton('Ru', callback_data = 'native_ru')
-    btn2 = tb.types.InlineKeyboardButton('Eng', callback_data = 'native_en')
-    btn3 = tb.types.InlineKeyboardButton('Kor', callback_data = 'native_ko')
-    btn4 = tb.types.InlineKeyboardButton('Pl', callback_data = 'native_pl')
-    btn5 = tb.types.InlineKeyboardButton('Ar', callback_data = 'native_ar')
-    btn6 = tb.types.InlineKeyboardButton('Po', callback_data = 'native_po')
-    btn7 = tb.types.InlineKeyboardButton('Go', callback_data = 'native_go')
-    btn8 = tb.types.InlineKeyboardButton('Rum', callback_data = 'native_rm')
-    btn9 = tb.types.InlineKeyboardButton('Ivr', callback_data = 'native_iv')
-    btn10 = tb.types.InlineKeyboardButton('Sp', callback_data = 'native_sp')
-    btn11 = tb.types.InlineKeyboardButton('Tu', callback_data = 'native_tu')
-    btn12 = tb.types.InlineKeyboardButton('It', callback_data = 'native_it')
-    btn13 = tb.types.InlineKeyboardButton('Ua', callback_data = 'native_ua')
-    btn14 = tb.types.InlineKeyboardButton('Zh', callback_data = 'native_zh')
-    btn15 = tb.types.InlineKeyboardButton('Fr', callback_data = 'native_fr')
-    btn16 = tb.types.InlineKeyboardButton('Sw', callback_data = 'native_sw')
-    btn17 = tb.types.InlineKeyboardButton('De', callback_data = 'native_de')
-    btn18 = tb.types.InlineKeyboardButton('Ja', callback_data = 'native_ja')
+    
+    btn1 = tb.types.InlineKeyboardButton('Ru', callback_data = f'{choice}_ru')
+    btn2 = tb.types.InlineKeyboardButton('Eng', callback_data = f'{choice}_en')
+    btn3 = tb.types.InlineKeyboardButton('Kor', callback_data = f'{choice}_ko')
+    btn4 = tb.types.InlineKeyboardButton('Pl', callback_data = f'{choice}_pl')
+    btn5 = tb.types.InlineKeyboardButton('Ar', callback_data = f'{choice}_ar')
+    btn6 = tb.types.InlineKeyboardButton('Po', callback_data = f'{choice}_po')
+    btn7 = tb.types.InlineKeyboardButton('Go', callback_data = f'{choice}_go')
+    btn8 = tb.types.InlineKeyboardButton('Rum', callback_data = f'{choice}_rm')
+    btn9 = tb.types.InlineKeyboardButton('Ivr', callback_data = f'{choice}_iv')
+    btn10 = tb.types.InlineKeyboardButton('Sp', callback_data = f'{choice}_sp')
+    btn11 = tb.types.InlineKeyboardButton('Tu', callback_data = f'{choice}_tu')
+    btn12 = tb.types.InlineKeyboardButton('It', callback_data = f'{choice}_it')
+    btn13 = tb.types.InlineKeyboardButton('Ua', callback_data = f'{choice}_ua')
+    btn14 = tb.types.InlineKeyboardButton('Zh', callback_data = f'{choice}_zh')
+    btn15 = tb.types.InlineKeyboardButton('Fr', callback_data = f'{choice}_fr')
+    btn16 = tb.types.InlineKeyboardButton('Sw', callback_data = f'{choice}_sw')
+    btn17 = tb.types.InlineKeyboardButton('De', callback_data = f'{choice}_de')
+    btn18 = tb.types.InlineKeyboardButton('Ja', callback_data = f'{choice}_ja')
     
     kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13, btn14, btn15, btn16, btn17, btn18)
     return kb     
 
-def kb_first_language():
-    kb = tb.types.InlineKeyboardMarkup(row_width=3)
-    btn1 = tb.types.InlineKeyboardButton('Ru', callback_data = 'first_ru')
-    btn2 = tb.types.InlineKeyboardButton('Eng', callback_data = 'first_en')
-    btn3 = tb.types.InlineKeyboardButton('Kor', callback_data = 'first_ko')
-    btn4 = tb.types.InlineKeyboardButton('Pl', callback_data = 'first_pl')
-    btn5 = tb.types.InlineKeyboardButton('Ar', callback_data = 'first_ar')
-    btn6 = tb.types.InlineKeyboardButton('Po', callback_data = 'first_po')
-    btn7 = tb.types.InlineKeyboardButton('Go', callback_data = 'first_go')
-    btn8 = tb.types.InlineKeyboardButton('Rum', callback_data = 'first_rm')
-    btn9 = tb.types.InlineKeyboardButton('Ivr', callback_data = 'first_iv')
-    btn10 = tb.types.InlineKeyboardButton('Sp', callback_data = 'first_sp')
-    btn11 = tb.types.InlineKeyboardButton('Tu', callback_data = 'first_tu')
-    btn12 = tb.types.InlineKeyboardButton('It', callback_data = 'first_it')
-    btn13 = tb.types.InlineKeyboardButton('Ua', callback_data = 'first_ua')
-    btn14 = tb.types.InlineKeyboardButton('Zh', callback_data = 'first_zh')
-    btn15 = tb.types.InlineKeyboardButton('Fr', callback_data = 'first_fr')
-    btn16 = tb.types.InlineKeyboardButton('Sw', callback_data = 'first_sw')
-    btn17 = tb.types.InlineKeyboardButton('De', callback_data = 'first_de')
-    btn18 = tb.types.InlineKeyboardButton('Ja', callback_data = 'first_ja')
-    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13, btn14, btn15, btn16, btn17, btn18)
-    return kb
-
-def kb_second_language():
-    kb = tb.types.InlineKeyboardMarkup(row_width=3)
-    btn1 = tb.types.InlineKeyboardButton('Ru', callback_data = 'second_ru')
-    btn2 = tb.types.InlineKeyboardButton('Eng', callback_data = 'second_en')
-    btn3 = tb.types.InlineKeyboardButton('Kor', callback_data = 'second_ko')
-    btn4 = tb.types.InlineKeyboardButton('Pl', callback_data = 'second_pl')
-    btn5 = tb.types.InlineKeyboardButton('Ar', callback_data = 'second_ar')
-    btn6 = tb.types.InlineKeyboardButton('Po', callback_data = 'second_po')
-    btn7 = tb.types.InlineKeyboardButton('Go', callback_data = 'second_go')
-    btn8 = tb.types.InlineKeyboardButton('Rum', callback_data = 'second_rm')
-    btn9 = tb.types.InlineKeyboardButton('Ivr', callback_data = 'second_iv')
-    btn10 = tb.types.InlineKeyboardButton('Sp', callback_data = 'second_sp')
-    btn11 = tb.types.InlineKeyboardButton('Tu', callback_data = 'second_tu')
-    btn12 = tb.types.InlineKeyboardButton('It', callback_data = 'second_it')
-    btn13 = tb.types.InlineKeyboardButton('Ua', callback_data = 'second_ua')
-    btn14 = tb.types.InlineKeyboardButton('Zh', callback_data = 'second_zh')
-    btn15 = tb.types.InlineKeyboardButton('Fr', callback_data = 'second_fr')
-    btn16 = tb.types.InlineKeyboardButton('Sw', callback_data = 'second_sw')
-    btn17 = tb.types.InlineKeyboardButton('De', callback_data = 'second_de')
-    btn18 = tb.types.InlineKeyboardButton('Ja', callback_data = 'second_ja')
-    kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13, btn14, btn15, btn16, btn17, btn18)
-    return kb
 
 if __name__ == "__main__":
     TOKEN = '5175024223:AAEbmu4PvbOuwH0g9DayF4LCyatnzB0nYuU'
@@ -283,7 +287,7 @@ if __name__ == "__main__":
         elif bot_lang == 'ru':
             userid.del_last_msg()
             userid.message('Мы тебя помним! Желаете перенастроить бота?', kb_clear_data(message))
-        elif bot_lang == 'eng':
+        elif bot_lang == 'en':
             userid.del_last_msg()
             userid.message('Mi teb9 pomnim! Желаете перенастроить бота?', kb_clear_data(message))
             
