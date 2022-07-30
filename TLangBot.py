@@ -6,11 +6,6 @@ import schedule
 from threading import Thread
 # from random import sample
 
-def sam_bot(message):
-    
-
-        
-
 class idk:
     
 
@@ -206,7 +201,10 @@ class idk:
         lmsg = bot.send_message(self.__id, text, reply_markup=kb)
         lsmgs[self.__id] = lmsg.id
         
-        return lmsg            
+        return lmsg   
+
+    def sam_bot(self, __message):        
+        pass
 
 def kb_bot_language():
     kb = tb.types.InlineKeyboardMarkup(row_width=1)
