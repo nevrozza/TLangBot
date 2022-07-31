@@ -120,7 +120,7 @@ class idk:
         elif self.__bot_lang == 'en':
             self.message(f"{self.__name}, what is your native language?", kb)    
 
-    def callback_receiver(self, cb):
+    def callback_receiver(self, cb, call):
         
         bot_lang = self.__bot_lang
         native_lang = self.__native_lang
@@ -222,6 +222,14 @@ class idk:
             self.update('all')
             start_command(self.__message)
         elif cb == 'comeback':
+            #bot.answer_callback_query(callback_query_id=call.id, text='Hello world')
+            # self.__sql.execute(f"UPDATE usercfg SET active = 1 WHERE id = '{self.__id}'")
+            # self.__db.commit()
+            self.del_last_msg()
+            self.first_spam()
+            if self.__second_lang != 0:
+                self.second_spam()
+        elif cb == 'comeback+active':
             self.__sql.execute(f"UPDATE usercfg SET active = 1 WHERE id = '{self.__id}'")
             self.__db.commit()
             self.del_last_msg()
@@ -508,6 +516,28 @@ def kb_languages(choice):
     
     kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13, btn14, btn15, btn16, btn17, btn18)
     return kb     
+def kb_active(message):
+    userid = idk(message)
+    bot_lang = userid.check_db('bot_lang')
+    kb = tb.types.InlineKeyboardMarkup(row_width=1)
+    if bot_lang == 0:
+        start_command(message)
+    elif bot_lang == 'en':
+        btn1 = tb.types.InlineKeyboardButton('Return back', callback_data = 'comeback+active')
+    elif bot_lang == 'ru':
+        btn1 = tb.types.InlineKeyboardButton('Включить обратно', callback_data = 'comeback+active')
+    kb.add(btn1)
+    return kb
+
+def kb_with_spam(message):
+    userid = idk(message)
+    bot_lang = userid.check_db('bot_lang')
+    kb = tb.types.InlineKeyboardMarkup(row_width=1)
+    if bot_lang == 'en':
+        btn1 = tb.types.InlineKeyboardButton('Subscribe', callback_data = 'activeon')
+    elif bot_lang == 'ru':
+        btn1 = tb.types.InlineKeyboardButton('Включить рассылку', callback_data = 'activeon')
+
 
 def global_first_spam(bot):
     db = sqlite3.connect(r"tlangbot.sqlite3", check_same_thread=False)
@@ -617,6 +647,7 @@ if __name__ == "__main__":
 
     @bot.message_handler(commands = ['start'])
     def start_command(message):
+        
         userid = idk(message)
         
         bot_lang = userid.check_db('bot_lang')
@@ -631,11 +662,22 @@ if __name__ == "__main__":
         elif bot_lang == 'en':
             userid.del_last_msg()
             userid.message('Mi teb9 pomnim! Желаете перенастроить бота?', kb_clear_data(message))
-            
+    @bot.message_handler(commands = ['end'])
+    def end(message):
+        userid = idk(message)
+        bot_lang = userid.check_db('bot_lang')
+        userid.__sql.execute(f"UPDATE usercfg SET active = 0 WHERE id = '{userid.__id}'")
+        userid.__db.commit()
+        if bot_lang == 'ru':
+            userid.del_last_msg()
+            userid.message('Рассылка отключена', kb_active(message))
+        elif bot_lang == 'en':
+            userid.del_last_msg()
+            userid.message('U have been unsubscribed', kb_active(message))
     @bot.callback_query_handler(func = lambda callback: callback.data)
     def check_callback_data(callback):
         userid = idk(callback.message)
-        userid.callback_receiver(callback.data)
+        userid.callback_receiver(callback.data, callback)
     bot.polling()
     
     
