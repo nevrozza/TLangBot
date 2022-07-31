@@ -611,7 +611,7 @@ if __name__ == "__main__":
     
     TOKEN = '5175024223:AAEbmu4PvbOuwH0g9DayF4LCyatnzB0nYuU'
     bot = tb.TeleBot(TOKEN)
-    schedule.every().day.at("19:25").do(global_first_spam, bot)
+    schedule.every().day.at("21:19").do(global_first_spam, bot)
     lsmgs = {}
     thread_func(bot)
 
