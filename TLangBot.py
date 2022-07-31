@@ -1,4 +1,5 @@
 
+import re
 import sqlite3
 import telebot as tb
 import time
@@ -20,6 +21,7 @@ class idk:
         self.__native_lang = self.check_db('native_lang')
         self.__first_lang = self.check_db('first_lang')
         self.__second_lang = self.check_db('second_lang')
+        self.__active = self.check_db('active')
         
 
     def update(self, target):
@@ -33,6 +35,8 @@ class idk:
             self.__first_lang = self.check_db('first_lang')
         elif target == 'second_lang':
             self.__second_lang = self.check_db('second_lang')
+        elif target == 'active':
+            self.__active = self.check_db('active')
         elif target == 'all':
             self.__name = self.check_db('name')
             self.__bot_lang = self.check_db('bot_lang')
@@ -120,7 +124,7 @@ class idk:
         elif self.__bot_lang == 'en':
             self.message(f"{self.__name}, what is your native language?", kb)    
 
-    def callback_receiver(self, cb, call):
+    def callback_receiver(self, cb, call = None):
         
         bot_lang = self.__bot_lang
         native_lang = self.__native_lang
@@ -221,21 +225,46 @@ class idk:
             self.del_last_msg()
             self.update('all')
             start_command(self.__message)
+        
         elif cb == 'comeback':
-            #bot.answer_callback_query(callback_query_id=call.id, text='Hello world')
-            # self.__sql.execute(f"UPDATE usercfg SET active = 1 WHERE id = '{self.__id}'")
-            # self.__db.commit()
+            
             self.del_last_msg()
             self.first_spam()
             if self.__second_lang != 0:
                 self.second_spam()
-        elif cb == 'comeback+active':
+        
+        elif cb == 'activeon':
             self.__sql.execute(f"UPDATE usercfg SET active = 1 WHERE id = '{self.__id}'")
             self.__db.commit()
-            self.del_last_msg()
-            self.first_spam()
-            if self.__second_lang != 0:
-                self.second_spam()
+            self.update('active')
+            bot.edit_message_reply_markup(self.__id, call.message.id)
+            if self.__bot_lang == 'ru':
+                bot.answer_callback_query(callback_query_id=call.id, text='Рассылка включена')
+            elif self.__bot_lang == 'en':
+                bot.answer_callback_query(callback_query_id=call.id, text='Rassilka vklyuchena')
+        
+        elif cb == 'activeoff':
+            
+            if self.__active == 1:
+                self.__sql.execute(f"UPDATE usercfg SET active = 0 WHERE id = '{self.__id}'")
+                self.__db.commit()
+                self.update('active')
+                if bot_lang == 'ru':
+                    self.del_last_msg()
+                    self.message('Рассылка отключена', kb_active(self.__message))
+                elif bot_lang == 'en':
+                    self.del_last_msg()
+                    self.message('U have been unsubscribed', kb_active(self.__message))
+        elif cb == 'comeback+active':
+            
+            self.__sql.execute(f"UPDATE usercfg SET active = 1 WHERE id = '{self.__id}'")
+            self.__db.commit()
+            self.update('active')
+            if self.__bot_lang == 'ru':
+                bot.answer_callback_query(callback_query_id=call.id, text='Рассылка включена')
+            elif self.__bot_lang == 'en':
+                bot.answer_callback_query(callback_query_id=call.id, text='Rassilka vklyuchena')
+            self.callback_receiver('comeback')
         elif cb == 'yes_second':
             self.yes_second()
         elif cb == 'no_second':
@@ -288,7 +317,7 @@ class idk:
             self.del_last_msg()
 
     def message(self, text='чел забыл написать сообщение', kb = None):   
-         
+        
         lmsg = bot.send_message(self.__id, text, reply_markup=kb)
         lsmgs[self.__id] = lmsg.id
         
@@ -365,10 +394,21 @@ class idk:
         
     def first_spam(self):
         self.words_getter()
-        bot.send_message(self.__id, f'{self.native_words[0]} - {self.first_words[0]}\n{self.native_words[1]} - {self.first_words[1]}\n{self.native_words[2]} - {self.first_words[2]}\n{self.native_words[3]} - {self.first_words[3]}\n{self.native_words[4]} - {self.first_words[4]}\n', reply_markup=None)
+        kb = kb_reply_norm(self.__message)
+    
+        if self.__active == 0 and self.__second_lang != 0:
+            kb = kb_reply_norm(self.__message)
+        elif self.__active == 1 and self.__second_lang == 0:
+            kb = kb_reply_norm(self.__message)
+        else:
+            kb = kb_with_spam(self.__message)
+        bot.send_message(self.__id, f'{self.native_words[0]} - {self.first_words[0]}\n{self.native_words[1]} - {self.first_words[1]}\n{self.native_words[2]} - {self.first_words[2]}\n{self.native_words[3]} - {self.first_words[3]}\n{self.native_words[4]} - {self.first_words[4]}\n', reply_markup=kb)
     
     def second_spam(self):
-        bot.send_message(self.__id, f'{self.native_words[0]} - {self.second_words[0]}\n{self.native_words[1]} - {self.second_words[1]}\n{self.native_words[2]} - {self.second_words[2]}\n{self.native_words[3]} - {self.second_words[3]}\n{self.native_words[4]} - {self.second_words[4]}\n', reply_markup=None)
+        kb = kb_reply_norm(self.__message)
+        if self.__active == 0:
+            kb = kb_with_spam(self.__message)
+        bot.send_message(self.__id, f'{self.native_words[0]} - {self.second_words[0]}\n{self.native_words[1]} - {self.second_words[1]}\n{self.native_words[2]} - {self.second_words[2]}\n{self.native_words[3]} - {self.second_words[3]}\n{self.native_words[4]} - {self.second_words[4]}\n', reply_markup=kb)
         
          
                          
@@ -434,6 +474,7 @@ class idk:
             self.message(f'How is it tranlating?:\n{see_word}', self.kb_quizz(target))   
 
 
+    
                 
 
     
@@ -467,6 +508,7 @@ def kb_clear_data(message, target = None):
     first_lang = userid.check_db('first_lang')
     second_lang = userid.check_db('second_lang')
     kb = tb.types.InlineKeyboardMarkup(row_width=1)
+
     if bot_lang == 0 or bot_lang == 'en':
             btn2 = tb.types.InlineKeyboardButton('Reset bot', callback_data = 'clear_data')
             btn1 = tb.types.InlineKeyboardButton('Ne menyat nastroiki', callback_data = 'comeback')
@@ -476,7 +518,11 @@ def kb_clear_data(message, target = None):
     if target == 'newbie':
         bot.send_message('-1001763397724', f'new user:\nid: {id}\nname: {name}\nbot_lang: {bot_lang}\nnative_lang: {native_lang}\nfirst_lang: {first_lang}\nsecond_lang: {second_lang}')
     kb.add(btn1,btn2)
+    
     return kb
+
+
+
 
 def kb_second_choose(message):
     userid = idk(message)
@@ -529,6 +575,21 @@ def kb_active(message):
     kb.add(btn1)
     return kb
 
+def kb_reply_norm(message):
+    userid = idk(message)
+    bot_lang = userid.check_db('bot_lang')
+    kb = tb.types.ReplyKeyboardMarkup(resize_keyboard= True, row_width= 2, one_time_keyboard=True)
+    if not bot_lang or bot_lang == 'en' or bot_lang == 0:
+        btn1 = tb.types.KeyboardButton('Quiz')
+        btn2 = tb.types.KeyboardButton('Words')
+        btn3 = tb.types.KeyboardButton('FAQ')
+    elif bot_lang == 'ru':
+        btn1 = tb.types.KeyboardButton('Квиз')
+        btn2 = tb.types.KeyboardButton('Слова')
+        btn3 = tb.types.KeyboardButton('Информация')
+    
+    kb.add(btn1, btn2, btn3)
+    return kb
 def kb_with_spam(message):
     userid = idk(message)
     bot_lang = userid.check_db('bot_lang')
@@ -537,7 +598,8 @@ def kb_with_spam(message):
         btn1 = tb.types.InlineKeyboardButton('Subscribe', callback_data = 'activeon')
     elif bot_lang == 'ru':
         btn1 = tb.types.InlineKeyboardButton('Включить рассылку', callback_data = 'activeon')
-
+    kb.add(btn1)
+    return kb
 
 def global_first_spam(bot):
     db = sqlite3.connect(r"tlangbot.sqlite3", check_same_thread=False)
@@ -655,7 +717,9 @@ if __name__ == "__main__":
             userid.anti_start()
             userid.new_user()
             userid.del_last_msg()
-            userid.message("Hello, choose bot's language!\nПривет, выбери язык бота!", kb_bot_language())
+            userid.message("Hello\nПривет", kb_reply_norm(message))
+            
+            userid.message("Choose bot's language!\nВыбери язык бота!", kb_bot_language())
         elif bot_lang == 'ru':
             userid.del_last_msg()
             userid.message('Мы тебя помним! Желаете перенастроить бота?', kb_clear_data(message))
@@ -665,17 +729,11 @@ if __name__ == "__main__":
     @bot.message_handler(commands = ['end'])
     def end(message):
         userid = idk(message)
-        bot_lang = userid.check_db('bot_lang')
-        userid.__sql.execute(f"UPDATE usercfg SET active = 0 WHERE id = '{userid.__id}'")
-        userid.__db.commit()
-        if bot_lang == 'ru':
-            userid.del_last_msg()
-            userid.message('Рассылка отключена', kb_active(message))
-        elif bot_lang == 'en':
-            userid.del_last_msg()
-            userid.message('U have been unsubscribed', kb_active(message))
+        userid.callback_receiver('activeoff')
+        
     @bot.callback_query_handler(func = lambda callback: callback.data)
     def check_callback_data(callback):
+        
         userid = idk(callback.message)
         userid.callback_receiver(callback.data, callback)
     bot.polling()
