@@ -22,12 +22,23 @@ class idk:
         self.__second_lang = self.check_db('second_lang')
         
 
-    def update(self):
-        self.__name = self.check_db('name')
-        self.__bot_lang = self.check_db('bot_lang')
-        self.__native_lang = self.check_db('native_lang')
-        self.__first_lang = self.check_db('first_lang')
-        self.__second_lang = self.check_db('second_lang')
+    def update(self, target):
+        if target == 'name':
+            self.__name = self.check_db('name')
+        elif target == 'bot_lang':
+            self.__bot_lang = self.check_db('bot_lang')
+        elif target == 'native_lang':
+            self.__native_lang = self.check_db('native_lang')
+        elif target == 'first_lang':
+            self.__first_lang = self.check_db('first_lang')
+        elif target == 'second_lang':
+            self.__second_lang = self.check_db('second_lang')
+        elif target == 'all':
+            self.__name = self.check_db('name')
+            self.__bot_lang = self.check_db('bot_lang')
+            self.__native_lang = self.check_db('native_lang')
+            self.__first_lang = self.check_db('first_lang')
+            self.__second_lang = self.check_db('second_lang')
         
 
 
@@ -36,14 +47,14 @@ class idk:
         self.__sql.execute("INSERT INTO usercfg VALUES(?, 0, 0, 0, 0, 0, 0, 0)", (self.__id,))
         self.__db.commit()
         
-        self.update()
+        self.update('all')
 
     def anti_start(self):
         try:
             self.__sql.execute(f"DELETE FROM usercfg WHERE id = '{self.__id}'")
             self.__db.commit()
         except: print('36 NONE')
-        self.update()
+        self.update('all')
     def anti_native(self):
         
         self.del_last_msg()
@@ -100,7 +111,7 @@ class idk:
        
         self.__sql.execute(f"UPDATE usercfg SET name = '{sent.text}' WHERE id = '{self.__id}'")
         self.__db.commit() 
-        self.update()
+        self.update('name')
         self.del_last_msg(sent)
         kb = kb_languages('native')
         
@@ -118,6 +129,7 @@ class idk:
         if cb == 'ru_bot':
             self.__sql.execute(f"UPDATE usercfg SET bot_lang = 'ru' WHERE id = '{self.__id}'")
             self.__db.commit()
+            self.update('bot_lang')
             if bot_lang == 0:
                 self.del_last_msg()
                 sent = self.message('Как Вас зовут?')
@@ -129,6 +141,7 @@ class idk:
         elif cb == 'eng_bot':
             self.__sql.execute(f"UPDATE usercfg SET bot_lang = 'en' WHERE id = '{self.__id}'")
             self.__db.commit()
+            self.update('bot_lang')
             if bot_lang == 0:
                 self.del_last_msg()
                 sent = self.message("What's your name?")
@@ -146,7 +159,7 @@ class idk:
                 self.anti_native()
                 self.__sql.execute(f"UPDATE usercfg SET native_lang = '{cb[-2:]}' WHERE id = '{self.__id}'")
                 self.__db.commit()
-                
+                self.update('native_lang')
 
         elif cb[0:5] == 'first':
             if bot_lang == 0:
@@ -171,6 +184,7 @@ class idk:
                     self.message('Do you want to choose second language?', kb_second_choose(self.__message))
                 self.__sql.execute(f"UPDATE usercfg SET first_lang = '{cb[-2:]}' WHERE id = '{self.__id}'")
                 self.__db.commit()
+                self.update('first_lang')
                 
                 
         elif cb[0:6] == 'second':
@@ -190,7 +204,7 @@ class idk:
             else:
                 self.__sql.execute(f"UPDATE usercfg SET second_lang = '{cb[-2:]}' WHERE id = '{self.__id}'")
                 self.__db.commit()
-                self.update()
+                self.update('second_lang')
                 second_lang = self.__second_lang
                 self.del_last_msg()
                 if bot_lang == 'ru':
@@ -205,15 +219,18 @@ class idk:
             self.__sql.execute(f"DELETE FROM usercfg WHERE id = '{self.__id}'")
             self.__db.commit()
             self.del_last_msg()
+            self.update('all')
             start_command(self.__message)
         elif cb == 'comeback':
-            pass
+            self.del_last_msg()
+            self.first_spam()
+            self.second_spam()
         elif cb == 'yes_second':
             self.yes_second()
         elif cb == 'no_second':
             cb = 'second_00'
             self.callback_receiver(cb)
-        self.update()
+
     def message(self, text='чел забыл написать сообщение', kb = None):   
          
         lmsg = bot.send_message(self.__id, text, reply_markup=kb)
@@ -278,6 +295,13 @@ class idk:
                 self.__sql.execute(f"SELECT {self.__second_lang} FROM words WHERE en = '{self.words[i]}'")
                 self.second_words.append(self.__sql.fetchone()[0])
         
+    def first_spam(self):
+        self.words_getter()
+        bot.send_message(self.__id, f'{self.native_words[0]} - {self.first_words[0]}\n{self.native_words[1]} - {self.first_words[1]}\n{self.native_words[2]} - {self.first_words[2]}\n{self.native_words[3]} - {self.first_words[3]}\n{self.native_words[4]} - {self.first_words[4]}\n', reply_markup=None)
+    
+    def second_spam(self):
+        
+        bot.send_message(self.__id, f'{self.native_words[0]} - {self.second_words[0]}\n{self.native_words[1]} - {self.second_words[1]}\n{self.native_words[2]} - {self.second_words[2]}\n{self.native_words[3]} - {self.second_words[3]}\n{self.native_words[4]} - {self.second_words[4]}\n', reply_markup=None)
   
             
             
@@ -365,7 +389,7 @@ if __name__ == "__main__":
     @bot.message_handler(commands = ['start'])
     def start_command(message):
         userid = idk(message)
-        userid.words_getter()
+        
         bot_lang = userid.check_db('bot_lang')
         if not bot_lang or bot_lang == 0:
             userid.anti_start()
