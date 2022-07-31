@@ -4,9 +4,8 @@ import telebot as tb
 import time
 import schedule
 
-from threading import Thread
 from random import choices 
-
+from threading import Thread
 class idk:
     
     
@@ -223,9 +222,12 @@ class idk:
             self.update('all')
             start_command(self.__message)
         elif cb == 'comeback':
+            self.__sql.execute(f"UPDATE usercfg SET active = 1 WHERE id = '{self.__id}'")
+            self.__db.commit()
             self.del_last_msg()
             self.first_spam()
-            self.second_spam()
+            if self.__second_lang != 0:
+                self.second_spam()
         elif cb == 'yes_second':
             self.yes_second()
         elif cb == 'no_second':
@@ -238,14 +240,42 @@ class idk:
             previous_count = self.__sql.fetchone()[0]
             self.__sql.execute(f"UPDATE usercfg SET correct_words = '{previous_count + 1}'WHERE id = '{self.__id}'")
             self.__db.commit()
-            self.__correct_words = previous_count + 1
+            correct_words = previous_count + 1
             self.__sql.execute(f"SELECT count_of_words FROM usercfg WHERE id = '{self.__id}'")
             learned_words = self.__sql.fetchone()[0]
             if self.__bot_lang == 'ru':
-                self.message(f'Вы ответили верно!\nКол-во правильных ответов: {self.__correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
+                self.message(f'Вы ответили верно!\nКол-во правильных ответов: {correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
             elif self.__bot_lang == 'en':
-                self.message(f'ENGGNGNВы ответили верно!\nКол-во правильных ответов: {self.__correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
+                self.message(f'ENGGNGNВы ответили верно!\nКол-во правильных ответов: {correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
 
+        elif cb[:19] == 'wrong_answer_first_':
+            self.del_last_msg()
+            self.__sql.execute(f"SELECT count_of_words FROM usercfg WHERE id = '{self.__id}'")
+            learned_words = self.__sql.fetchone()[0]
+            self.__sql.execute(f"SELECT correct_words FROM usercfg WHERE id = '{self.__id}'")
+            correct_words = self.__sql.fetchone()[0]
+            self.__sql.execute(f"SELECT {self.__native_lang} FROM words WHERE en = '{cb[19:]}'")
+            native_correct_word = self.__sql.fetchone()[0]
+            self.__sql.execute(f"SELECT {self.__first_lang} FROM words WHERE en = '{cb[19:]}'")
+            first_correct_word = self.__sql.fetchone()[0]
+            if self.__bot_lang == 'ru':
+                self.message(f'Вы ответили неверно!\nПравильный ответ:\n{first_correct_word} - {native_correct_word}\nКол-во правильных ответов: {correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
+            elif self.__bot_lang == 'en':
+                self.message(f'ENGGNGNВы ответили неверно!\nПравильный ответ:\n{first_correct_word} - {native_correct_word}\nКол-во правильных ответов: {correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
+        elif cb[:20] == 'wrong_answer_second_':
+            self.del_last_msg()
+            self.__sql.execute(f"SELECT count_of_words FROM usercfg WHERE id = '{self.__id}'")
+            learned_words = self.__sql.fetchone()[0]
+            self.__sql.execute(f"SELECT correct_words FROM usercfg WHERE id = '{self.__id}'")
+            correct_words = self.__sql.fetchone()[0]
+            self.__sql.execute(f"SELECT {self.__native_lang} FROM words WHERE en = '{cb[20:]}'")
+            native_correct_word = self.__sql.fetchone()[0]
+            self.__sql.execute(f"SELECT {self.__second_lang} FROM words WHERE en = '{cb[20:]}'")
+            second_correct_word = self.__sql.fetchone()[0]
+            if self.__bot_lang == 'ru':
+                self.message(f'Вы ответили неверно!\nПравильный ответ:\n{second_correct_word} - {native_correct_word}\nКол-во правильных ответов: {correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
+            elif self.__bot_lang == 'en':
+                self.message(f'ENGGNGNВы ответили неверно!\nПравильный ответ:\n{second_correct_word} - {native_correct_word}\nКол-во правильных ответов: {correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
         elif cb == 'del_cur_mes':
             self.del_last_msg()
 
@@ -292,7 +322,9 @@ class idk:
                 self.already.remove('0')
             except Exception as ex: print(ex)
             for i in self.already:
-                self.__counts_of_words.remove(int(i))
+                try:
+                    self.__counts_of_words.remove(int(i))
+                except: None
             try:
                 self.__sql.execute(f'SELECT * FROM words')
                 self.__list_numbers = self.__sql.fetchall()
@@ -328,12 +360,12 @@ class idk:
         bot.send_message(self.__id, f'{self.native_words[0]} - {self.first_words[0]}\n{self.native_words[1]} - {self.first_words[1]}\n{self.native_words[2]} - {self.first_words[2]}\n{self.native_words[3]} - {self.first_words[3]}\n{self.native_words[4]} - {self.first_words[4]}\n', reply_markup=None)
     
     def second_spam(self):
-        
         bot.send_message(self.__id, f'{self.native_words[0]} - {self.second_words[0]}\n{self.native_words[1]} - {self.second_words[1]}\n{self.native_words[2]} - {self.second_words[2]}\n{self.native_words[3]} - {self.second_words[3]}\n{self.native_words[4]} - {self.second_words[4]}\n', reply_markup=None)
-        self.quizz()
+        
+         
+                         
             
-            
-    def kb_quizz(self):
+    def kb_quizz(self,target):
         arka = list(range(1,5))
         random = choices(self.already, k = 3)
         random_button = choices(arka, k = 1)
@@ -344,7 +376,7 @@ class idk:
         pre_wrong_answer2 = str(self.__list_numbers[int(random[1])-1]).split("('")[1].split("',")[0]
         pre_wrong_answer3 = str(self.__list_numbers[int(random[2])-1]).split("('")[1].split("',")[0]
         self.__sql.execute(f"SELECT {self.__native_lang} FROM words WHERE en = '{self.correct_word}'")
-        self.correct_word = self.__sql.fetchone()[0]
+        self.native_correct_word = self.__sql.fetchone()[0]
         self.__sql.execute(f"SELECT {self.__native_lang} FROM words WHERE en = '{pre_wrong_answer1}'")
         wrong_answer1 = self.__sql.fetchone()[0]
         self.__sql.execute(f"SELECT {self.__native_lang} FROM words WHERE en = '{pre_wrong_answer2}'")
@@ -352,28 +384,28 @@ class idk:
         self.__sql.execute(f"SELECT {self.__native_lang} FROM words WHERE en = '{pre_wrong_answer3}'")
         wrong_answer3 = self.__sql.fetchone()[0]
         if str(random_button) == '[1]':
-            btn1 = tb.types.InlineKeyboardButton(f'{self.correct_word}', callback_data = 'correct_answer')
-            btn2 = tb.types.InlineKeyboardButton(f'{wrong_answer1}', callback_data = 'wrong_answer')
-            btn3 = tb.types.InlineKeyboardButton(f'{wrong_answer2}', callback_data = 'wrong_answer')
-            btn4 = tb.types.InlineKeyboardButton(f'{wrong_answer3}', callback_data = 'wrong_answer')
+            btn1 = tb.types.InlineKeyboardButton(f'{self.native_correct_word}', callback_data = 'correct_answer')
+            btn2 = tb.types.InlineKeyboardButton(f'{wrong_answer1}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
+            btn3 = tb.types.InlineKeyboardButton(f'{wrong_answer2}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
+            btn4 = tb.types.InlineKeyboardButton(f'{wrong_answer3}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
         elif str(random_button) =='[2]':
-            btn1 = tb.types.InlineKeyboardButton(f'{wrong_answer1}', callback_data = 'wrong_answer')
-            btn2 = tb.types.InlineKeyboardButton(f'{self.correct_word}', callback_data = 'correct_answer')
-            btn3 = tb.types.InlineKeyboardButton(f'{wrong_answer2}', callback_data = 'wrong_answer')
-            btn4 = tb.types.InlineKeyboardButton(f'{wrong_answer3}', callback_data = 'wrong_answer')
+            btn1 = tb.types.InlineKeyboardButton(f'{wrong_answer1}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
+            btn2 = tb.types.InlineKeyboardButton(f'{self.native_correct_word}', callback_data = 'correct_answer')
+            btn3 = tb.types.InlineKeyboardButton(f'{wrong_answer2}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
+            btn4 = tb.types.InlineKeyboardButton(f'{wrong_answer3}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
         elif str(random_button) == '[3]':
-            btn1 = tb.types.InlineKeyboardButton(f'{wrong_answer1}', callback_data = 'wrong_answer')
-            btn2 = tb.types.InlineKeyboardButton(f'{wrong_answer2}', callback_data = 'wrong_answer')
-            btn3 = tb.types.InlineKeyboardButton(f'{self.correct_word}', callback_data = 'correct_answer')
-            btn4 = tb.types.InlineKeyboardButton(f'{wrong_answer3}', callback_data = 'wrong_answer')
+            btn1 = tb.types.InlineKeyboardButton(f'{wrong_answer1}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
+            btn2 = tb.types.InlineKeyboardButton(f'{wrong_answer2}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
+            btn3 = tb.types.InlineKeyboardButton(f'{self.native_correct_word}', callback_data = 'correct_answer')
+            btn4 = tb.types.InlineKeyboardButton(f'{wrong_answer3}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
         elif str(random_button) == '[4]':
-            btn1 = tb.types.InlineKeyboardButton(f'{wrong_answer1}', callback_data = 'wrong_answer')
-            btn2 = tb.types.InlineKeyboardButton(f'{wrong_answer2}', callback_data = 'wrong_answer')
-            btn3 = tb.types.InlineKeyboardButton(f'{wrong_answer3}', callback_data = 'wrong_answer')
-            btn4 = tb.types.InlineKeyboardButton(f'{self.correct_word}', callback_data = 'correct_answer')
+            btn1 = tb.types.InlineKeyboardButton(f'{wrong_answer1}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
+            btn2 = tb.types.InlineKeyboardButton(f'{wrong_answer2}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
+            btn3 = tb.types.InlineKeyboardButton(f'{wrong_answer3}', callback_data = f'wrong_answer_{target}_{self.correct_word}')
+            btn4 = tb.types.InlineKeyboardButton(f'{self.native_correct_word}', callback_data = 'correct_answer')
         kb.add(btn1,btn2,btn3,btn4)
         return kb
-    def quizz(self):
+    def quizz(self, target):
         
         try:
             self.__sql.execute(f"SELECT words FROM usercfg WHERE id = '{self.__id}'")
@@ -382,10 +414,16 @@ class idk:
         except Exception as ex: print(ex)
         random = choices(self.already, k = 1)
         self.correct_word = str(self.__list_numbers[int(random[0])-1]).split("('")[1].split("',")[0]
+        if target == 'second':
+            self.__sql.execute(f"SELECT {self.__second_lang} FROM words WHERE en = '{self.correct_word}'")
+            see_word = self.__sql.fetchone()[0]
+        elif target == 'first':
+            self.__sql.execute(f"SELECT {self.__first_lang} FROM words WHERE en = '{self.correct_word}'")
+            see_word = self.__sql.fetchone()[0]
         if self.__bot_lang == 'ru':
-            self.message(f'Как переводится это слово?:\n{self.correct_word}', self.kb_quizz()) 
+            self.message(f'Как переводится это слово?:\n{see_word}', self.kb_quizz(target)) 
         elif self.__bot_lang == 'en':
-            self.message(f'How is it tranlating?:\n{self.correct_word}', self.kb_quizz())   
+            self.message(f'How is it tranlating?:\n{see_word}', self.kb_quizz(target))   
 
 
                 
@@ -471,12 +509,111 @@ def kb_languages(choice):
     kb.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12, btn13, btn14, btn15, btn16, btn17, btn18)
     return kb     
 
+def global_first_spam(bot):
+    db = sqlite3.connect(r"tlangbot.sqlite3", check_same_thread=False)
+    sql = db.cursor()
+    counts_of_words = list(range(1, 4679))
+    sql.execute("SELECT * FROM usercfg")
+    ids = sql.fetchall()
+    for i in ids:
+        id = i[0]
+        sql.execute(f"SELECT active FROM usercfg WHERE id = '{id}'")
+        active = sql.fetchone()[0]
+        if active == 1:
+            sql.execute(f"SELECT native_lang FROM usercfg WHERE id = '{id}'")
+            native_lang = sql.fetchone()[0]
+            sql.execute(f"SELECT first_lang FROM usercfg WHERE id = '{id}'")
+            first_lang = sql.fetchone()[0]
+            sql.execute(f"SELECT second_lang FROM usercfg WHERE id = '{id}'")
+            second_lang = sql.fetchone()[0]
+            words = []
+            native_words = []
+            first_words = []
+            second_words = []
+            try:    
+                sql.execute(f"SELECT words FROM usercfg WHERE id = '{id}'")
+                row = sql.fetchone()[0]
+            except: print('227 NONE')
+            
+            if row == 0:
+                
+                try:
+                    sql.execute(f'SELECT * FROM words')
+                    list_numbers = sql.fetchall()
+                except: None    
+                number_of_words = choices(counts_of_words, k = 5)
+                for i in number_of_words:
+                    
+                    a = str(list_numbers[i-1]).split("('")[1].split("',")[0]
+                    words.append(a)
+                sql.execute(f"UPDATE usercfg SET words = '{row}, {str(number_of_words).replace('[', '').replace(']', '')}'WHERE id = '{id}'")
+                db.commit()
+                sql.execute(f"SELECT count_of_words FROM usercfg WHERE id = '{id}'")
+                previous_count = sql.fetchone()[0]
+                sql.execute(f"UPDATE usercfg SET count_of_words = '{previous_count + 5}'WHERE id = '{id}'")
+                db.commit()
+            
+            else:
+                try:
+                    sql.execute(f"SELECT words FROM usercfg WHERE id = '{id}'")
+                    already = sql.fetchone()[0].split(',')
+                    already.remove('0')
+                except Exception as ex: print(ex)
+                for i in already:
+
+                    try:
+                        counts_of_words.remove(int(i))
+                    except: None
+
+                try:
+                    sql.execute(f'SELECT * FROM words')
+                    list_numbers = sql.fetchall()
+                except: None
+                previous = choices(already, k = 2)
+                
+                words.append(str(list_numbers[int(previous[0])-1]).split("('")[1].split("',")[0])
+                words.append(str(list_numbers[int(previous[1])-1]).split("('")[1].split("',")[0])
+                number_of_words = choices(counts_of_words, k = 3)
+                for i in number_of_words:
+
+                    a = str(list_numbers[i-1]).split("('")[1].split("',")[0]
+                    words.append(a)
+                sql.execute(f"UPDATE usercfg SET words = '{row}, {str(number_of_words).replace('[', '').replace(']', '')}'WHERE id = '{id}'")
+                db.commit()
+                sql.execute(f"SELECT count_of_words FROM usercfg WHERE id = '{id}'")
+                previous_count = sql.fetchone()[0]
+                sql.execute(f"UPDATE usercfg SET count_of_words = '{previous_count + 3}'WHERE id = '{id}'")
+                db.commit()
+            
+                
+            for i in range(0,5):
+                sql.execute(f"SELECT {native_lang} FROM words WHERE en = '{words[i]}'")
+                native_words.append(sql.fetchone()[0])
+                sql.execute(f"SELECT {first_lang} FROM words WHERE en = '{words[i]}'")
+                first_words.append(sql.fetchone()[0])
+                if second_lang != 0:
+                    sql.execute(f"SELECT {second_lang} FROM words WHERE en = '{words[i]}'")
+                    second_words.append(sql.fetchone()[0])
+            bot.send_message(id, f'{native_words[0]} - {first_words[0]}\n{native_words[1]} - {first_words[1]}\n{native_words[2]} - {first_words[2]}\n{native_words[3]} - {first_words[3]}\n{native_words[4]} - {first_words[4]}\n', reply_markup=None)
+            if second_lang != 0:
+                bot.send_message(id, f'{native_words[0]} - {second_words[0]}\n{native_words[1]} - {second_words[1]}\n{native_words[2]} - {second_words[2]}\n{native_words[3]} - {second_words[3]}\n{native_words[4]} - {second_words[4]}\n', reply_markup=None)
+
+def func(bot):
+    while True:
+        schedule.run_pending()
+        time.sleep(60) 
+
+def thread_func(bot):
+    ababa = Thread(target=func, args=[bot])
+    ababa.start()  
 
 if __name__ == "__main__":
+    
     TOKEN = '5175024223:AAEbmu4PvbOuwH0g9DayF4LCyatnzB0nYuU'
     bot = tb.TeleBot(TOKEN)
+    schedule.every().day.at("19:25").do(global_first_spam, bot)
     lsmgs = {}
-    
+    thread_func(bot)
 
     @bot.message_handler(commands = ['start'])
     def start_command(message):
@@ -499,11 +636,13 @@ if __name__ == "__main__":
     def check_callback_data(callback):
         userid = idk(callback.message)
         userid.callback_receiver(callback.data)
-            
-                 
-            
-
-
-
-
     bot.polling()
+    
+    
+           
+            
+
+
+
+
+   
