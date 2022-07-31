@@ -4,12 +4,13 @@ import time
 import schedule
 
 from threading import Thread
-# from random import sample
+from random import choices
 
 class idk:
     
     
     def __init__(self, message):
+        self.__counts_of_words = list(range(1, 4679))
         self.__message = message
         self.__id = message.chat.id
         self.__db = sqlite3.connect(r"tlangbot.sqlite3", check_same_thread=False)
@@ -32,13 +33,12 @@ class idk:
 
     def new_user(self):
         
-        self.__sql.execute("INSERT INTO usercfg VALUES(?, 0, 0, 0, 0, 0, 0)", (self.__id,))
+        self.__sql.execute("INSERT INTO usercfg VALUES(?, 0, 0, 0, 0, 0, 0, 0)", (self.__id,))
         self.__db.commit()
         
         self.update()
 
     def anti_start(self):
-        
         try:
             self.__sql.execute(f"DELETE FROM usercfg WHERE id = '{self.__id}'")
             self.__db.commit()
@@ -221,10 +221,73 @@ class idk:
         
         return lmsg   
 
-    def sam_bot(self, __id):
+    def words_getter(self):
+        
+        self.words = []
+        self.native_words = []
+        self.first_words = []
+        self.second_words = []
+        try:    
+            self.__sql.execute(f"SELECT words FROM usercfg WHERE id = '{self.__id}'")
+            row = self.__sql.fetchone()[0]
+        except: print('227 NONE')
+        print(row)
+        if row == 0:
+            
+            try:
+                self.__sql.execute(f'SELECT * FROM words')
+                list_numbers = self.__sql.fetchall()
+            except: None    
+            number_of_words = choices(self.__counts_of_words, k = 5)
+            for i in number_of_words:
+                
+                a = str(list_numbers[i-1]).split("('")[1].split("',")[0]
+                self.words.append(a)
+            self.__sql.execute(f"UPDATE usercfg SET words = '{row}, {str(number_of_words).replace('[', '').replace(']', '')}'WHERE id = '{self.__id}'")
+            self.__db.commit()
+        else:
+            try:
+                self.__sql.execute(f"SELECT words FROM usercfg WHERE id = '680983331'")
+                self.already = self.__sql.fetchone()[0].split(',')
+                self.already.remove('0')
+            except Exception as ex: print(ex)
+            for i in self.already:
+                self.__counts_of_words.remove(int(i))
+            try:
+                self.__sql.execute(f'SELECT * FROM words')
+                list_numbers = self.__sql.fetchall()
+            except: None
+            previous = choices(self.already, k = 2)
+            print(str(list_numbers[int(self.already[-1])]).split("('")[1].split("',")[0], str(list_numbers[int(self.already[-2])]).split("('")[1].split("',")[0])
+            self.words.append(str(list_numbers[int(previous[0])-1]).split("('")[1].split("',")[0])
+            self.words.append(str(list_numbers[int(previous[1])-1]).split("('")[1].split("',")[0])
+            number_of_words = choices(self.__counts_of_words, k = 3)
+            for i in number_of_words:
+
+                a = str(list_numbers[i-1]).split("('")[1].split("',")[0]
+                self.words.append(a)
+            self.__sql.execute(f"UPDATE usercfg SET words = '{row}, {str(number_of_words).replace('[', '').replace(']', '')}'WHERE id = '{self.__id}'")
+            self.__db.commit()
+              
+        for i in range(0,5):
+            self.__sql.execute(f"SELECT {self.__native_lang} FROM words WHERE en = '{self.words[i]}'")
+            self.native_words.append(self.__sql.fetchone()[0])
+            self.__sql.execute(f"SELECT {self.__first_lang} FROM words WHERE en = '{self.words[i]}'")
+            self.first_words.append(self.__sql.fetchone()[0])
+            if self.__second_lang != 0:
+                self.__sql.execute(f"SELECT {self.__second_lang} FROM words WHERE en = '{self.words[i]}'")
+                self.second_words.append(self.__sql.fetchone()[0])
+        
+  
+            
+            
+
+
+                
+
+    
         
         
-        return
 
 def kb_bot_language():
     kb = tb.types.InlineKeyboardMarkup(row_width=1)
@@ -242,9 +305,6 @@ def kb_clear_data(message, target = None):
     first_lang = userid.check_db('first_lang')
     second_lang = userid.check_db('second_lang')
     kb = tb.types.InlineKeyboardMarkup(row_width=1)
-    
-    
-        
     if bot_lang == 0 or bot_lang == 'en':
             btn2 = tb.types.InlineKeyboardButton('Reset bot', callback_data = 'clear_data')
             btn1 = tb.types.InlineKeyboardButton('Ne menyat nastroiki', callback_data = 'comeback')
@@ -300,11 +360,12 @@ if __name__ == "__main__":
     TOKEN = '5175024223:AAEbmu4PvbOuwH0g9DayF4LCyatnzB0nYuU'
     bot = tb.TeleBot(TOKEN)
     lsmgs = {}
-
+    
 
     @bot.message_handler(commands = ['start'])
     def start_command(message):
         userid = idk(message)
+        userid.words_getter()
         bot_lang = userid.check_db('bot_lang')
         if not bot_lang or bot_lang == 0:
             userid.anti_start()
