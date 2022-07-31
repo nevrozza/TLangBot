@@ -34,8 +34,7 @@ class idk:
         
         self.__sql.execute("INSERT INTO usercfg VALUES(?, 0, 0, 0, 0, 0, 0)", (self.__id,))
         self.__db.commit()
-        bot.send_message('-1001763397724', f'new user: {self.__id}')
-        print(f'new user: {self.__id}')
+        
         self.update()
 
     def anti_start(self):
@@ -195,9 +194,9 @@ class idk:
                 second_lang = self.__second_lang
                 self.del_last_msg()
                 if bot_lang == 'ru':
-                    self.message(f'Вот ваши настройки бота:\nВаше имя: {self.__name}\nРодной язык: {native_lang}\nПервый язык: {first_lang}\nВторой язык: {second_lang}', kb_clear_data(self.__message))
+                    self.message(f'Вот ваши настройки бота:\nВаше имя: {self.__name}\nРодной язык: {native_lang}\nПервый язык: {first_lang}\nВторой язык: {second_lang}', kb_clear_data(self.__message, 'newbie'))
                 elif bot_lang == 'en':
-                    self.message(f'This is yours bot settings:\nYour name: {self.__name}\nNative language: {native_lang}\nFirst language: {first_lang}\nSecond language: {second_lang}', kb_clear_data(self.__message))
+                    self.message(f'This is yours bot settings:\nYour name: {self.__name}\nNative language: {native_lang}\nFirst language: {first_lang}\nSecond language: {second_lang}', kb_clear_data(self.__message, 'newbie'))
                 
                 
                 
@@ -234,17 +233,26 @@ def kb_bot_language():
     kb.add(btn1,btn2)
     return kb
 
-def kb_clear_data(message):
+def kb_clear_data(message, target = None):
     userid = idk(message)
+    id = userid.check_db('id')
+    name = userid.check_db('name')
     bot_lang = userid.check_db('bot_lang')
+    native_lang = userid.check_db('native_lang')
+    first_lang = userid.check_db('first_lang')
+    second_lang = userid.check_db('second_lang')
     kb = tb.types.InlineKeyboardMarkup(row_width=1)
+    
+    
+        
     if bot_lang == 0 or bot_lang == 'en':
             btn2 = tb.types.InlineKeyboardButton('Reset bot', callback_data = 'clear_data')
             btn1 = tb.types.InlineKeyboardButton('Ne menyat nastroiki', callback_data = 'comeback')
     elif bot_lang == 'ru':
             btn2 = tb.types.InlineKeyboardButton('Настроить бота заново', callback_data = 'clear_data')
             btn1 = tb.types.InlineKeyboardButton('Не менять настройки', callback_data = 'comeback')
-
+    if target == 'newbie':
+        bot.send_message('-1001763397724', f'new user:\nid: {id}\nname: {name}\nbot_lang: {bot_lang}\nnative_lang: {native_lang}\nfirst_lang: {first_lang}\nsecond_lang: {second_lang}')
     kb.add(btn1,btn2)
     return kb
 
