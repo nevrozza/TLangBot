@@ -45,7 +45,7 @@ class idk:
 
     def new_user(self):
         
-        self.__sql.execute("INSERT INTO usercfg VALUES(?, 0, 0, 0, 0, 0, 0, 0)", (self.__id,))
+        self.__sql.execute("INSERT INTO usercfg VALUES(?, 0, 0, 0, 0, 0, 0, 0, 0, 0)", (self.__id,))
         self.__db.commit()
         
         self.update('all')
@@ -102,7 +102,7 @@ class idk:
         try:    
             self.__sql.execute(f"SELECT {target} FROM usercfg WHERE id = '{self.__id}'")
             row = self.__sql.fetchone()[0]
-            print(target, row)
+            
             return row
         except: print('30 NONE')
     
@@ -232,6 +232,23 @@ class idk:
             cb = 'second_00'
             self.callback_receiver(cb)
 
+        elif cb == 'correct_answer':
+            self.del_last_msg()
+            self.__sql.execute(f"SELECT correct_words FROM usercfg WHERE id = '{self.__id}'")
+            previous_count = self.__sql.fetchone()[0]
+            self.__sql.execute(f"UPDATE usercfg SET correct_words = '{previous_count + 1}'WHERE id = '{self.__id}'")
+            self.__db.commit()
+            self.__correct_words = previous_count + 1
+            self.__sql.execute(f"SELECT count_of_words FROM usercfg WHERE id = '{self.__id}'")
+            learned_words = self.__sql.fetchone()[0]
+            if self.__bot_lang == 'ru':
+                self.message(f'Вы ответили верно!\nКол-во правильных ответов: {self.__correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
+            elif self.__bot_lang == 'en':
+                self.message(f'ENGGNGNВы ответили верно!\nКол-во правильных ответов: {self.__correct_words}\nКол-во слов: {learned_words}', kb_delete_current_message(self.__message))
+
+        elif cb == 'del_cur_mes':
+            self.del_last_msg()
+
     def message(self, text='чел забыл написать сообщение', kb = None):   
          
         lmsg = bot.send_message(self.__id, text, reply_markup=kb)
@@ -249,7 +266,7 @@ class idk:
             self.__sql.execute(f"SELECT words FROM usercfg WHERE id = '{self.__id}'")
             row = self.__sql.fetchone()[0]
         except: print('227 NONE')
-        print(row)
+        
         if row == 0:
             
             try:
@@ -263,9 +280,14 @@ class idk:
                 self.words.append(a)
             self.__sql.execute(f"UPDATE usercfg SET words = '{row}, {str(number_of_words).replace('[', '').replace(']', '')}'WHERE id = '{self.__id}'")
             self.__db.commit()
+            self.__sql.execute(f"SELECT count_of_words FROM usercfg WHERE id = '{self.__id}'")
+            previous_count = self.__sql.fetchone()[0]
+            self.__sql.execute(f"UPDATE usercfg SET count_of_words = '{previous_count + 5}'WHERE id = '{self.__id}'")
+            self.__db.commit()
+           
         else:
             try:
-                self.__sql.execute(f"SELECT words FROM usercfg WHERE id = '680983331'")
+                self.__sql.execute(f"SELECT words FROM usercfg WHERE id = '{self.__id}'")
                 self.already = self.__sql.fetchone()[0].split(',')
                 self.already.remove('0')
             except Exception as ex: print(ex)
@@ -276,7 +298,7 @@ class idk:
                 self.__list_numbers = self.__sql.fetchall()
             except: None
             previous = choices(self.already, k = 2)
-            print(str(self.__list_numbers[int(self.already[-1])]).split("('")[1].split("',")[0], str(self.__list_numbers[int(self.already[-2])]).split("('")[1].split("',")[0])
+            
             self.words.append(str(self.__list_numbers[int(previous[0])-1]).split("('")[1].split("',")[0])
             self.words.append(str(self.__list_numbers[int(previous[1])-1]).split("('")[1].split("',")[0])
             number_of_words = choices(self.__counts_of_words, k = 3)
@@ -286,6 +308,11 @@ class idk:
                 self.words.append(a)
             self.__sql.execute(f"UPDATE usercfg SET words = '{row}, {str(number_of_words).replace('[', '').replace(']', '')}'WHERE id = '{self.__id}'")
             self.__db.commit()
+            self.__sql.execute(f"SELECT count_of_words FROM usercfg WHERE id = '{self.__id}'")
+            previous_count = self.__sql.fetchone()[0]
+            self.__sql.execute(f"UPDATE usercfg SET count_of_words = '{previous_count + 3}'WHERE id = '{self.__id}'")
+            self.__db.commit()
+           
               
         for i in range(0,5):
             self.__sql.execute(f"SELECT {self.__native_lang} FROM words WHERE en = '{self.words[i]}'")
@@ -372,6 +399,17 @@ def kb_bot_language():
     btn1 = tb.types.InlineKeyboardButton('Ru', callback_data = 'ru_bot')
     btn2 = tb.types.InlineKeyboardButton('Eng', callback_data = 'eng_bot')
     kb.add(btn1,btn2)
+    return kb
+
+def kb_delete_current_message(message):
+    userid = idk(message)
+    bot_lang = userid.check_db('bot_lang')
+    kb = tb.types.InlineKeyboardMarkup(row_width=1)
+    if bot_lang == 0 or bot_lang == 'en':
+            btn1 = tb.types.InlineKeyboardButton('Delete this message', callback_data = 'del_cur_mes')
+    elif bot_lang == 'ru':
+            btn1 = tb.types.InlineKeyboardButton('Удалить это сообщение', callback_data = 'del_cur_mes')
+    kb.add(btn1)
     return kb
 
 def kb_clear_data(message, target = None):
